@@ -18,11 +18,11 @@ for side in muos knulli; do
  cat > "$target/config.example.json" <<CONFIG
 {
   "Side": "$side",
-  "Card": "/caminho/do/sd2",
-  "ROMs": "/caminho/das/roms",
+  "Card": "/path/to/sd2",
+  "ROMs": "/path/to/roms",
   "Cores": {
-    "Gambatte": {"Saves": "/caminho/gambatte"},
-    "mGBA": {"Saves": "/caminho/mgba"}
+    "Gambatte": {"Saves": "/path/to/gambatte"},
+    "mGBA": {"Saves": "/path/to/mgba"}
   }
 }
 CONFIG

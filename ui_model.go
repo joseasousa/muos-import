@@ -79,10 +79,10 @@ func (h *handheld) edit() {
 func (h *handheld) fields() []uiRow {
 	c := h.editor.config
 	return []uiRow{
-		{"Cartão SD2", c.Card},
-		{"Biblioteca de ROMs", c.ROMs},
-		{"Saves do Gambatte", c.Cores["Gambatte"].Saves},
-		{"Saves do mGBA", c.Cores["mGBA"].Saves},
+		{"SD2 card", c.Card},
+		{"ROM library", c.ROMs},
+		{"Gambatte saves", c.Cores["Gambatte"].Saves},
+		{"mGBA saves", c.Cores["mGBA"].Saves},
 	}
 }
 
@@ -123,13 +123,15 @@ func (h *handheld) browse(dir string) {
 	h.show(uiBrowse)
 }
 
+const browseUpLabel = "Go up one level"
+
 func (h *handheld) browseActions() []uiRow {
-	rows := []uiRow{{label: "Escolher esta pasta"}}
+	rows := []uiRow{{label: "Select this folder"}}
 	if h.dir != "/" {
-		rows = append(rows, uiRow{label: "Subir um nível"})
+		rows = append(rows, uiRow{label: browseUpLabel})
 	}
 	if h.field >= 2 {
-		rows = append(rows, uiRow{label: "Deixar sem pasta"})
+		rows = append(rows, uiRow{label: "Leave unset"})
 	}
 	return rows
 }
@@ -140,10 +142,10 @@ func (h *handheld) view() (string, string, []uiRow) {
 		rows := h.fields()
 		for i := range rows {
 			if rows[i].detail == "" {
-				rows[i].detail = "Nenhuma pasta escolhida"
+				rows[i].detail = "No folder selected"
 			}
 		}
-		return "Configurar", h.side, append(rows, uiRow{label: "Salvar configuração"})
+		return "Configure", h.side, append(rows, uiRow{label: "Save configuration"})
 	case uiBrowse:
 		rows := h.browseActions()
 		for _, folder := range h.folders {
@@ -151,23 +153,23 @@ func (h *handheld) view() (string, string, []uiRow) {
 		}
 		return h.fields()[h.field].label, h.dir, rows
 	case uiSave:
-		return "Salvar configuração?", "", []uiRow{{label: "Voltar"}, {label: "Salvar"}}
+		return "Save configuration?", "", []uiRow{{label: "Back"}, {label: "Save"}}
 	case uiSync:
-		return "Iniciar sincronização?", "Feche o RetroArch antes de continuar.", []uiRow{{label: "Voltar"}, {label: "Sincronizar"}}
+		return "Start sync?", "Close RetroArch before continuing.", []uiRow{{label: "Back"}, {label: "Sync"}}
 	case uiRunning:
-		return "Sincronizando", "Aguarde até a operação terminar.", nil
+		return "Syncing", "Wait for the sync to finish.", nil
 	case uiResult:
-		title := "Concluído"
+		title := "Done"
 		if !h.success {
-			title = "Ação interrompida"
+			title = "Action failed"
 		}
 		return title, h.result, nil
 	default:
 		return "SaveSync", h.side, []uiRow{
-			{label: "Configurar"},
-			{label: "Verificar configuração"},
-			{label: "Sincronizar"},
-			{label: "Sair"},
+			{label: "Configure"},
+			{label: "Check configuration"},
+			{label: "Sync"},
+			{label: "Exit"},
 		}
 	}
 }
@@ -175,10 +177,10 @@ func (h *handheld) view() (string, string, []uiRow) {
 func (h *handheld) check() error {
 	var c Config
 	if err := readJSON(h.path, &c); err != nil {
-		return fmt.Errorf("configuração (%s): %w", h.path, err)
+		return fmt.Errorf("configuration (%s): %w", h.path, err)
 	}
 	if c.Side != h.side {
-		return fmt.Errorf("Side: a configuração usa %q e o launcher usa %q. Abra Configurar para corrigir", c.Side, h.side)
+		return fmt.Errorf("Side: configuration uses %q and the launcher uses %q. Open Configure to fix this", c.Side, h.side)
 	}
 	return validateConfig(c, true)
 }
@@ -208,7 +210,7 @@ func (h *handheld) activate() bool {
 		case 0:
 			h.edit()
 		case 1:
-			h.report(h.check(), "Configuração válida", uiHome)
+			h.report(h.check(), "Configuration is valid", uiHome)
 		case 2:
 			if err := h.check(); err != nil {
 				h.report(err, "", uiHome)
@@ -237,7 +239,7 @@ func (h *handheld) activate() bool {
 			h.browse(filepath.Join(h.dir, h.folders[h.cursor-len(label)]))
 		case h.cursor == 0:
 			h.chooseFolder(h.dir)
-		case label[h.cursor].label == "Subir um nível":
+		case label[h.cursor].label == browseUpLabel:
 			h.browse(filepath.Dir(h.dir))
 		default:
 			h.chooseFolder("")
@@ -251,7 +253,7 @@ func (h *handheld) activate() bool {
 		if err != nil {
 			back = uiConfig
 		}
-		h.report(err, "Configuração salva", back)
+		h.report(err, "Configuration saved", back)
 	case uiSync:
 		if h.cursor == 0 {
 			return h.back()
@@ -281,7 +283,7 @@ func syncToLog(config, side string) error {
 		return err
 	}
 	defer log.Close()
-	if _, err := fmt.Fprintln(log, "\n--- Sincronização ---"); err != nil {
+	if _, err := fmt.Fprintln(log, "\n--- Sync ---"); err != nil {
 		return err
 	}
 	var stderr bytes.Buffer

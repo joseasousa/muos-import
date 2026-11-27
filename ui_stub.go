@@ -5,5 +5,5 @@ package main
 import "errors"
 
 func launchUI(_, _ string) error {
-	return errors.New("interface SDL2 indisponível neste binário")
+	return errors.New("SDL2 interface is unavailable in this binary")
 }

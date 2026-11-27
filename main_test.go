@@ -32,7 +32,7 @@ func TestRoundTripAndRestore(t *testing.T) {
 	card := filepath.Join(root, "card")
 	put(t, filepath.Join(card, ".savesync-card"), "", 1)
 	configs := []Config{}
-	names := []string{"Jogo (muOS)", "Jogo (KNULLI)"}
+	names := []string{"Game (muOS)", "Game (KNULLI)"}
 	for i, side := range []string{"muos", "knulli"} {
 		base := filepath.Join(root, side)
 		c := Config{Side: side, Card: card, ROMs: filepath.Join(base, "roms"), Cores: map[string]Roots{"mGBA": {Saves: filepath.Join(base, "saves")}}}

@@ -79,7 +79,7 @@ func identify(path string) (Game, error) {
 				continue
 			}
 			if rom != nil {
-				return Game{}, errors.New("ZIP com mais de uma ROM")
+				return Game{}, errors.New("ZIP contains more than one ROM")
 			}
 			rom = f
 		}
@@ -149,18 +149,18 @@ func saveJSON(path string, value any) error {
 func hashBytes(data []byte) string { return fmt.Sprintf("%x", sha256.Sum256(data)) }
 func object(root string, v Version) ([]byte, error) {
 	if len(v.Hash) != 64 || strings.Trim(v.Hash, "0123456789abcdef") != "" {
-		return nil, errors.New("hash inválido")
+		return nil, errors.New("invalid hash")
 	}
 	data, err := os.ReadFile(filepath.Join(root, "objects", v.Hash))
 	if err == nil && hashBytes(data) != v.Hash {
-		err = errors.New("objeto corrompido")
+		err = errors.New("corrupt object")
 	}
 	return data, err
 }
 func capture(root, path, side string) (Version, error) {
 	info, err := os.Lstat(path)
 	if err == nil && !info.Mode().IsRegular() {
-		return Version{}, errors.New("save não é arquivo regular")
+		return Version{}, errors.New("save is not a regular file")
 	}
 	if err != nil && !os.IsNotExist(err) {
 		return Version{}, err
@@ -178,7 +178,7 @@ func capture(root, path, side string) (Version, error) {
 		return Version{}, err
 	}
 	if !info.Mode().IsRegular() {
-		return Version{}, errors.New("save não é arquivo regular")
+		return Version{}, errors.New("save is not a regular file")
 	}
 	data, err := io.ReadAll(f)
 	if err != nil {
@@ -189,7 +189,7 @@ func capture(root, path, side string) (Version, error) {
 		return Version{}, err
 	}
 	if after.Size() != info.Size() || after.ModTime() != info.ModTime() {
-		return Version{}, errors.New("save mudou durante a leitura")
+		return Version{}, errors.New("save changed while being read")
 	}
 	v := Version{hashBytes(data), info.ModTime().Unix(), side}
 	if _, err = object(root, v); os.IsNotExist(err) {
@@ -251,7 +251,7 @@ func paths(c Config) (map[string]string, error) {
 		}
 		g, err := identify(path)
 		if err != nil {
-			fmt.Printf("Pulado %s (%v)\n", path, err)
+			fmt.Printf("Skipped %s (%v)\n", path, err)
 			return nil
 		}
 		if g.ID == "" {
@@ -304,13 +304,13 @@ func paths(c Config) (map[string]string, error) {
 	}
 	for key, p := range result {
 		if used[strings.ToLower(p)] > 1 {
-			fmt.Println("Pulado por colisão", p)
+			fmt.Println("Skipped due to a path collision", p)
 			delete(result, key)
 		}
 	}
 	for id, list := range games {
 		if len(list) > 1 {
-			fmt.Println("Pulado por ROM duplicada", id)
+			fmt.Println("Skipped duplicate ROM", id)
 		}
 	}
 	return result, nil
@@ -325,7 +325,7 @@ type Pending struct {
 
 func replay(root string, p Pending, allowed map[string]string) error {
 	if allowed[p.Key] != p.Path {
-		return errors.New("destino pendente não corresponde à configuração")
+		return errors.New("pending destination does not match the configuration")
 	}
 	local, err := capture(root, p.Path, p.After.Side)
 	if err != nil {
@@ -335,7 +335,7 @@ func replay(root string, p Pending, allowed map[string]string) error {
 		return nil
 	}
 	if local.Hash != p.Before {
-		return errors.New("destino mudou durante operação pendente")
+		return errors.New("destination changed during the pending operation")
 	}
 	data, err := object(root, p.After)
 	if err != nil {
@@ -349,7 +349,7 @@ func run(c Config, action, key, hash string) error {
 		if err := validateConfig(c, true); err != nil {
 			return err
 		}
-		fmt.Println("Configuração válida")
+		fmt.Println("Configuration is valid")
 		return nil
 	}
 	if runtime.GOOS == "linux" && action != "list" {
@@ -360,7 +360,7 @@ func run(c Config, action, key, hash string) error {
 		for _, path := range processes {
 			name, err := os.ReadFile(path)
 			if err == nil && strings.HasPrefix(strings.TrimSpace(string(name)), "retroarch") {
-				return errors.New("feche o RetroArch antes de sincronizar")
+				return errors.New("close RetroArch before syncing")
 			}
 		}
 	}
@@ -381,13 +381,13 @@ func run(c Config, action, key, hash string) error {
 	}
 	if len(c.StateProfile) > 0 {
 		if len(c.BuildFiles) < 2 {
-			fmt.Println("States desativados: configure hashes do RetroArch e dos cores")
+			fmt.Println("Save states disabled: configure RetroArch and core hashes")
 			c.StateProfile = nil
 		}
 		for path, expected := range c.BuildFiles {
 			data, err := os.ReadFile(path)
 			if err != nil || hashBytes(data) != expected {
-				fmt.Println("States desativados: build mudou", path)
+				fmt.Println("Save states disabled because a build changed", path)
 				c.StateProfile = nil
 				break
 			}
@@ -404,7 +404,7 @@ func run(c Config, action, key, hash string) error {
 		return err
 	}
 	if m.Schema != 1 || m.Entries == nil {
-		return errors.New("manifesto incompatível")
+		return errors.New("incompatible manifest")
 	}
 	var pending Pending
 	if err = readJSON(pendingPath, &pending); err == nil {
@@ -426,16 +426,16 @@ func run(c Config, action, key, hash string) error {
 				fmt.Printf("%s  %s  %s  %s\n", k, v.Hash, v.Side, time.Unix(v.Time, 0).Format(time.RFC3339))
 			}
 			for _, v := range e.Conflict {
-				fmt.Printf("Conflito %s  %s  %s\n", k, v.Hash, v.Side)
+				fmt.Printf("Conflict %s  %s  %s\n", k, v.Hash, v.Side)
 			}
 		}
 		return nil
 	}
 	if action != "sync" && action != "restore" {
-		return errors.New("ação inválida")
+		return errors.New("invalid action")
 	}
 	if action == "restore" && allowed[key] == "" {
-		return errors.New("save não encontrado")
+		return errors.New("save not found")
 	}
 	for k, path := range allowed {
 		if action == "restore" && k != key {
@@ -469,7 +469,7 @@ func run(c Config, action, key, hash string) error {
 				}
 			}
 			if selected.Hash == "" {
-				return errors.New("backup não encontrado")
+				return errors.New("backup not found")
 			}
 			if _, err := object(root, selected); err != nil {
 				return err
@@ -486,7 +486,7 @@ func run(c Config, action, key, hash string) error {
 			if strings.Contains(k, ":Gambatte.state") || strings.Contains(k, ":mGBA.state") {
 				if !observed && local.Hash != "" && local.Hash != e.Current.Hash && !c.ApprovedStates[local.Hash] {
 					e.Seen[c.Side] = local.Hash
-					fmt.Println("State pulado por origem não confirmada", path)
+					fmt.Println("Skipped save state with unverified origin", path)
 					continue
 				}
 			}
@@ -496,7 +496,7 @@ func run(c Config, action, key, hash string) error {
 			e.observe(c.Side, local)
 		}
 		if len(e.Conflict) > 0 {
-			fmt.Println("Conflito", path)
+			fmt.Println("Conflict", path)
 		} else if e.Current.Hash != "" && !(local.Hash == "" && previous != "" && e.Applied[c.Side] == e.Generation && action == "sync") {
 			if e.Current.Hash != local.Hash {
 				e.backup(local)
@@ -519,11 +519,11 @@ func run(c Config, action, key, hash string) error {
 				if err = os.Remove(pendingPath); err != nil {
 					return err
 				}
-				fmt.Println("Recebido", path)
+				fmt.Println("Received", path)
 			} else {
 				e.Applied[c.Side] = e.Generation
 				if previous != local.Hash {
-					fmt.Println("Publicado", path)
+					fmt.Println("Published", path)
 				}
 			}
 		}
@@ -534,17 +534,17 @@ func run(c Config, action, key, hash string) error {
 	if err = saveJSON(manifestPath, m); err != nil {
 		return err
 	}
-	fmt.Println("Sincronização concluída")
+	fmt.Println("Sync complete")
 	return nil
 }
 func main() {
-	config := flag.String("config", "config.json", "configuração local")
-	action := flag.String("action", "sync", "sync, check, list ou restore")
-	key := flag.String("key", "", "identificador do save para restaurar")
-	hash := flag.String("hash", "", "hash do backup para restaurar")
-	yes := flag.Bool("confirm", false, "confirmar restauração")
-	ui := flag.Bool("ui", false, "abrir interface no portátil")
-	side := flag.String("side", "", "firmware da interface (muos ou knulli)")
+	config := flag.String("config", "config.json", "local configuration file")
+	action := flag.String("action", "sync", "sync, check, list, or restore")
+	key := flag.String("key", "", "identifier of the save to restore")
+	hash := flag.String("hash", "", "hash of the backup to restore")
+	yes := flag.Bool("confirm", false, "confirm restore")
+	ui := flag.Bool("ui", false, "open the handheld interface")
+	side := flag.String("side", "", "handheld firmware (muos or knulli)")
 	flag.Parse()
 	if *ui {
 		if err := launchUI(*config, *side); err != nil {
@@ -556,13 +556,13 @@ func main() {
 	var c Config
 	err := readJSON(*config, &c)
 	if err == nil && *side != "" && c.Side != *side {
-		err = fmt.Errorf("Side: esperado %q, encontrado %q", *side, c.Side)
+		err = fmt.Errorf("Side: expected %q, got %q", *side, c.Side)
 	}
 	if err == nil && *side != "" && *action == "sync" {
 		err = validateConfig(c, true)
 	}
 	if err == nil && *action == "restore" && !*yes {
-		err = errors.New("restauração requer -confirm")
+		err = errors.New("restore requires -confirm")
 	}
 	if err == nil {
 		err = run(c, *action, *key, *hash)

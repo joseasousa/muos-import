@@ -86,7 +86,7 @@ func sdlError(operation string) error {
 
 func launchUI(path, side string) error {
 	if !validSide(side) {
-		return fmt.Errorf("Side: firmware inválido (%q)", side)
+		return fmt.Errorf("Side: invalid firmware (%q)", side)
 	}
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -94,7 +94,7 @@ func launchUI(path, side string) error {
 	}
 	C.SDL_SetMainReady()
 	if C.SDL_Init(C.SDL_INIT_VIDEO|C.SDL_INIT_GAMECONTROLLER) != 0 {
-		return sdlError("inicializar")
+		return sdlError("initialize")
 	}
 	defer C.SDL_Quit()
 
@@ -103,22 +103,22 @@ func launchUI(path, side string) error {
 	window := C.SDL_CreateWindow(title, C.SDL_WINDOWPOS_CENTERED, C.SDL_WINDOWPOS_CENTERED,
 		screenWidth, screenHeight, C.SDL_WINDOW_FULLSCREEN_DESKTOP)
 	if window == nil {
-		return sdlError("abrir tela")
+		return sdlError("open window")
 	}
 	defer C.SDL_DestroyWindow(window)
 
 	renderer := C.SDL_CreateRenderer(window, -1, 0)
 	if renderer == nil {
-		return sdlError("abrir renderizador")
+		return sdlError("create renderer")
 	}
 	defer C.SDL_DestroyRenderer(renderer)
 	if C.SDL_RenderSetLogicalSize(renderer, screenWidth, screenHeight) != 0 {
-		return sdlError("ajustar área de desenho")
+		return sdlError("set drawing area")
 	}
 	texture := C.SDL_CreateTexture(renderer, C.SDL_PIXELFORMAT_RGBA32,
 		C.SDL_TEXTUREACCESS_STREAMING, screenWidth, screenHeight)
 	if texture == nil {
-		return sdlError("criar textura")
+		return sdlError("create texture")
 	}
 	defer C.SDL_DestroyTexture(texture)
 
@@ -146,7 +146,7 @@ func launchUI(path, side string) error {
 				if h.job != nil {
 					<-h.job
 				}
-				return sdlError("desenhar interface")
+				return sdlError("draw interface")
 			}
 			C.SDL_RenderPresent(renderer)
 			dirty = false
@@ -170,7 +170,7 @@ func launchUI(path, side string) error {
 				if closing {
 					return err
 				}
-				h.report(err, "Sincronização concluída. Consulte sync.log para ver os detalhes.", uiHome)
+				h.report(err, "Sync complete. See sync.log for details.", uiHome)
 				dirty = true
 			default:
 			}
@@ -230,7 +230,7 @@ func configureController(index C.int, side string) {
 		value := C.CString(mapping)
 		defer C.free(unsafe.Pointer(value))
 		if C.SDL_GameControllerAddMapping(value) < 0 {
-			fmt.Fprintln(os.Stderr, sdlError("mapear controle"))
+			fmt.Fprintln(os.Stderr, sdlError("map controller"))
 		}
 	}
 }
@@ -375,14 +375,14 @@ func (c *uiCanvas) paint(h *handheld) {
 		}
 	}
 	c.fill(uiMargin, 438, screenWidth-2*uiMargin, 1, uiSurface)
-	controls := "↑ ↓  Navegar       A  Confirmar       B  Voltar"
+	controls := "↑ ↓  Navigate       A  Confirm       B  Back"
 	switch h.screen {
 	case uiHome:
-		controls = "↑ ↓  Navegar       A  Confirmar       B  Sair"
+		controls = "↑ ↓  Navigate       A  Confirm       B  Exit"
 	case uiRunning:
 		controls = ""
 	case uiResult:
-		controls = "A / B  Voltar"
+		controls = "A / B  Back"
 	}
 	c.text(c.small, uiMuted, uiMargin, 465, controls)
 }
