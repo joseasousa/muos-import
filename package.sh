@@ -5,7 +5,7 @@ out="${1:-dist}"
 muos="$out/muos/MUOS/application/SaveSync"
 knulli="$out/knulli/roms/ports"
 mkdir -p "$muos" "$knulli/SaveSync"
-CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o "$muos/savesync" .
+CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -tags sdl -trimpath -o "$muos/savesync" .
 cp "$muos/savesync" "$knulli/SaveSync/savesync"
 cp packaging/muos/launch.sh "$muos/launch.sh"
 cp packaging/knulli/SaveSync.sh "$knulli/SaveSync.sh"
