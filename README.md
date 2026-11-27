@@ -1,27 +1,27 @@
-# SaveSync para muOS e KNULLI
+# SaveSync for muOS and KNULLI
 
-Protótipo para sincronizar saves do RetroArch no RG40XX V. Usa um cartão de boot para cada firmware e um SD2 exFAT compartilhado. A interface exibe o resultado da sincronização e registra os detalhes em `sync.log`.
+SaveSync is a prototype for syncing RetroArch saves on the RG40XX V. It uses a separate boot card for each firmware and a shared exFAT SD2 card. The interface shows the sync result and records the details in `sync.log`.
 
-## Compilar e configurar
+## Build and configure
 
-1. Gere os pacotes com Go 1.23 ou superior, um compilador C para Linux ARM64 e o SDL2 de desenvolvimento para esse alvo. Em um Linux ARM64 com `pkg-config`, os headers e a biblioteca de desenvolvimento instalados, rode `./package.sh`. Para compilar de outra arquitetura, aponte `CC` para o compilador ARM64 e configure `PKG_CONFIG_SYSROOT_DIR` e `PKG_CONFIG_LIBDIR` para que o `pkg-config` encontre o SDL2 do sysroot ARM64. Use um sysroot compatível com os dois firmwares. O binário usa o SDL2 fornecido pelo firmware em execução.
-2. Copie `dist/muos/MUOS/application/SaveSync` para `MUOS/application/` no armazenamento do muOS. No armazenamento do KNULLI, copie a pasta `SaveSync` e o arquivo `SaveSync.sh` de `dist/knulli/roms/ports/` para `roms/ports/`. Use um SD2 de teste e crie manualmente um arquivo vazio chamado `.savesync-card` na raiz dele.
-3. Abra o SaveSync pelo menu do firmware. Use o direcional para navegar, **A** para confirmar e **B** para voltar. Na primeira abertura, selecione a raiz do SD2, a biblioteca de ROMs e as pastas efetivas de saves dos cores que usa. O SaveSync espera o save na raiz configurada do core, com o mesmo nome-base da ROM ou do ZIP. Use Gambatte para GB/GBC e mGBA para GBA. Salve a configuração e selecione **Verificar configuração**.
-4. Feche o RetroArch e selecione **Sincronizar**. Consulte o resultado na tela e os detalhes em `sync.log`, ao lado de `config.json`. Desligue o aparelho para alternar o SD1 e rode o SaveSync no outro firmware antes de jogar.
+1. Build the packages with Go 1.23 or later, a Linux ARM64 C compiler, and SDL2 development files for that target. On ARM64 Linux with `pkg-config`, the headers, and the development library installed, run `./package.sh`. To cross-compile, set `CC` to the ARM64 compiler and configure `PKG_CONFIG_SYSROOT_DIR` and `PKG_CONFIG_LIBDIR` so `pkg-config` can find SDL2 in the ARM64 sysroot. Use a sysroot compatible with both firmwares. The binary uses the SDL2 library provided by the firmware at runtime.
+2. Copy `dist/muos/MUOS/application/SaveSync` to `MUOS/application/` on the muOS storage. On the KNULLI storage, copy the `SaveSync` folder and `SaveSync.sh` from `dist/knulli/roms/ports/` to `roms/ports/`. Use a test SD2 card and create an empty file named `.savesync-card` at its root.
+3. Launch SaveSync from the firmware menu. Use the D-pad to navigate, **A** to confirm, and **B** to go back. On first launch, select the SD2 root, the ROM library, and the folders where RetroArch writes saves for the cores you use. SaveSync expects each save directly in the configured core folder, with the same base name as the ROM or ZIP file. Use Gambatte for GB and GBC, and mGBA for GBA. Select **Save configuration**, confirm with **Save**, and then select **Check configuration**. To change the settings later, select **Configure**.
+4. Close RetroArch and select **Sync**. Check the result on screen and the details in `sync.log` next to `config.json`. Select **Exit** to return to the firmware menu. Power off the device before swapping the SD1 boot card and run SaveSync on the other firmware before playing.
 
-Para configurar por arquivo, copie `config.example.json` para `config.json` ao lado do executável e preencha os caminhos absolutos medidos no aparelho. Rode `./savesync -config config.json -action check` para verificar a configuração sem iniciar a sincronização. Para desenvolver apenas a CLI, use `go build .` e `go test ./...`.
+To configure SaveSync from a file, copy `config.example.json` to `config.json` next to the executable and fill in the absolute paths from your device. Run `./savesync -config config.json -action check` to validate the configuration. For CLI development, use `go build .` and `go test ./...`.
 
-## Backups e conflitos
+## Backups and conflicts
 
-Os dados ficam em `SaveSync/` no SD2. O manifesto mantém a origem e a data dos arquivos. Em alterações concorrentes, vence a data mais recente. Empates exigem escolha. Mantenha o relógio do aparelho acertado. A partir de um terminal no aparelho:
+SaveSync stores its data under `SaveSync/` on the SD2 card. The manifest records where each file came from and when it was modified. When both sides change a save, the most recent change wins. Ties require a manual choice. Keep the device clock accurate. From a terminal on the device, run the following commands to list backups and conflicts or restore a backup.
 
 ```sh
 ./savesync -config config.json -action list
-./savesync -config config.json -action restore -key 'CHAVE' -hash HASH -confirm
+./savesync -config config.json -action restore -key 'KEY' -hash HASH -confirm
 ```
 
-## Save states e validação física
+## Save states and device validation
 
-Deixe os states desativados até validar ambos os builds com conteúdo descartável. Para ensaios, configure `States` no core, a mesma identificação de combinação em `StateProfile` nos dois lados e `BuildFiles` com caminhos e hashes SHA-256 dos executáveis e cores locais. Em `ApprovedStates`, inclua os hashes dos states existentes cuja origem foi confirmada. O protótipo reconhece `.state`, `.state.auto` e slots de 1 a 999. Se o RetroArch estiver configurado para carregar o slot automático, o jogo poderá abrir diretamente naquele estado.
+Keep save state syncing disabled until you validate both builds with disposable data. For testing, set `States` for the core, use the same identifier for the RetroArch and core combination in `StateProfile` on both sides, and set `BuildFiles` to the paths and SHA-256 hashes of the local executables and cores. Add the hashes of existing save states whose origin you have verified to `ApprovedStates`. SaveSync recognizes `.state`, `.state.auto`, and slots 1 through 999. If RetroArch loads the automatic slot at startup, the game may resume directly from that state.
 
-A consulta de backups e conflitos e a restauração usam a CLI. Falta validar no RG40XX V a abertura da interface, o vídeo SDL2, os botões, os caminhos e o retorno aos menus dos firmwares. Valide também os builds, o carregamento de states e a recuperação após interrupção em SD2 exFAT.
+Use the CLI to list backups and conflicts and to restore backups. On the RG40XX V, verify that the interface launches, SDL2 renders correctly, buttons work, the configured paths are correct, and exiting returns to the firmware menu. Also verify the builds, save state loading, and recovery after an interrupted write on the exFAT SD2 card.

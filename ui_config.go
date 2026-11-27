@@ -25,7 +25,7 @@ func openConfigEditor(path, side string) (configEditor, error) {
 		return editor, err
 	}
 	if editor.raw == nil {
-		return editor, fmt.Errorf("configuração precisa ser um objeto JSON")
+		return editor, fmt.Errorf("configuration must be a JSON object")
 	}
 	editor.config = Config{}
 	if err = json.Unmarshal(data, &editor.config); err != nil {
