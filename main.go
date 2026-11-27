@@ -345,6 +345,13 @@ func replay(root string, p Pending, allowed map[string]string) error {
 }
 
 func run(c Config, action, key, hash string) error {
+	if action == "check" {
+		if err := validateConfig(c, true); err != nil {
+			return err
+		}
+		fmt.Println("Configuração válida")
+		return nil
+	}
 	if runtime.GOOS == "linux" && action != "list" {
 		processes, err := filepath.Glob("/proc/[0-9]*/comm")
 		if err != nil {
@@ -357,21 +364,8 @@ func run(c Config, action, key, hash string) error {
 			}
 		}
 	}
-	if c.Side != "muos" && c.Side != "knulli" {
-		return errors.New("firmware inválido")
-	}
-	if !filepath.IsAbs(c.Card) || !filepath.IsAbs(c.ROMs) {
-		return errors.New("configure caminhos absolutos")
-	}
-	if _, err := os.Stat(filepath.Join(c.Card, ".savesync-card")); err != nil {
-		return fmt.Errorf("SD2 não confirmado: %w", err)
-	}
-	for _, roots := range c.Cores {
-		for _, path := range []string{roots.Saves, roots.States} {
-			if path != "" && !filepath.IsAbs(path) {
-				return errors.New("configure caminhos absolutos para saves")
-			}
-		}
+	if err := validateConfig(c, false); err != nil {
+		return err
 	}
 	root := filepath.Join(c.Card, "SaveSync")
 	if err := os.MkdirAll(root, 0755); err != nil {
@@ -545,13 +539,28 @@ func run(c Config, action, key, hash string) error {
 }
 func main() {
 	config := flag.String("config", "config.json", "configuração local")
-	action := flag.String("action", "sync", "sync, list ou restore")
+	action := flag.String("action", "sync", "sync, check, list ou restore")
 	key := flag.String("key", "", "identificador do save para restaurar")
 	hash := flag.String("hash", "", "hash do backup para restaurar")
 	yes := flag.Bool("confirm", false, "confirmar restauração")
+	ui := flag.Bool("ui", false, "abrir interface no portátil")
+	side := flag.String("side", "", "firmware da interface (muos ou knulli)")
 	flag.Parse()
+	if *ui {
+		if err := launchUI(*config, *side); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	var c Config
 	err := readJSON(*config, &c)
+	if err == nil && *side != "" && c.Side != *side {
+		err = fmt.Errorf("Side: esperado %q, encontrado %q", *side, c.Side)
+	}
+	if err == nil && *side != "" && *action == "sync" {
+		err = validateConfig(c, true)
+	}
 	if err == nil && *action == "restore" && !*yes {
 		err = errors.New("restauração requer -confirm")
 	}
